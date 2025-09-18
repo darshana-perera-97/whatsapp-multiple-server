@@ -3,6 +3,12 @@ node_modules/
 */node_modules/
 **/node_modules/
 
+# Data directories
+data/
+userData/
+backend/data/
+backend/userData/
+
 # Logs
 npm-debug.log*
 yarn-debug.log*
