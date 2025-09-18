@@ -125,6 +125,32 @@ app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
+// Request logging middleware
+app.use((req, res, next) => {
+  const timestamp = new Date().toISOString();
+  console.log(`📥 [${timestamp}] ${req.method} ${req.originalUrl} - IP: ${req.ip}`);
+  console.log(`📋 Headers:`, JSON.stringify(req.headers, null, 2));
+  if (req.body && Object.keys(req.body).length > 0) {
+    console.log(`📦 Body:`, JSON.stringify(req.body, null, 2));
+  }
+  if (req.query && Object.keys(req.query).length > 0) {
+    console.log(`🔍 Query:`, JSON.stringify(req.query, null, 2));
+  }
+  console.log('─'.repeat(80));
+  
+  // Log response
+  const originalSend = res.send;
+  res.send = function(data) {
+    const responseTimestamp = new Date().toISOString();
+    console.log(`📤 [${responseTimestamp}] Response ${res.statusCode} for ${req.method} ${req.originalUrl}`);
+    console.log(`📋 Response Data:`, typeof data === 'string' ? data : JSON.stringify(data, null, 2));
+    console.log('═'.repeat(80));
+    originalSend.call(this, data);
+  };
+  
+  next();
+});
+
 // Basic root API endpoint
 app.get('/', (req, res) => {
   res.json({
@@ -374,12 +400,27 @@ app.get('/api/users/:userId/whatsapp/qr', authenticateUser, async (req, res) => 
 
     // Set up ready event listener
     client.on('ready', () => {
-      console.log(`WhatsApp client ready for user ${userId}`);
+      const timestamp = new Date().toISOString();
+      console.log(`✅ [${timestamp}] WhatsApp client ready for user ${userId}`);
+      console.log(`📱 Client Info:`, JSON.stringify(client.info, null, 2));
     });
 
     // Set up authentication success listener
     client.on('authenticated', () => {
-      console.log(`WhatsApp client authenticated for user ${userId}`);
+      const timestamp = new Date().toISOString();
+      console.log(`🔐 [${timestamp}] WhatsApp client authenticated for user ${userId}`);
+    });
+
+    // Set up disconnection listener
+    client.on('disconnected', (reason) => {
+      const timestamp = new Date().toISOString();
+      console.log(`❌ [${timestamp}] WhatsApp client disconnected for user ${userId}. Reason: ${reason}`);
+    });
+
+    // Set up error listener
+    client.on('auth_failure', (msg) => {
+      const timestamp = new Date().toISOString();
+      console.log(`🚫 [${timestamp}] WhatsApp authentication failed for user ${userId}: ${msg}`);
     });
 
     // Initialize the client if not already done
@@ -505,9 +546,31 @@ app.use((err, req, res, next) => {
 
 // Start server
 app.listen(PORT, () => {
-  console.log(`🚀 Server is running on port ${PORT}`);
-  console.log(`📍 API available at: http://localhost:${PORT}`);
-  console.log(`🏥 Health check: http://localhost:${PORT}/health`);
+  const timestamp = new Date().toISOString();
+  console.log('='.repeat(80));
+  console.log(`🚀 [${timestamp}] WhatsApp Multiple Server Backend Started`);
+  console.log('='.repeat(80));
+  console.log(`📍 Server running on port: ${PORT}`);
+  console.log(`🌐 API Base URL: http://localhost:${PORT}`);
+  console.log(`🏥 Health Check: http://localhost:${PORT}/health`);
+  console.log(`📊 Data Directory: ${DATA_DIR}`);
+  console.log(`👤 User Data Directory: ${USER_DATA_DIR}`);
+  console.log(`📝 Users File: ${USERS_FILE}`);
+  console.log('='.repeat(80));
+  console.log('📋 Available Endpoints:');
+  console.log('  GET  / - API Info');
+  console.log('  GET  /health - Health Check');
+  console.log('  POST /api/users/register - User Registration');
+  console.log('  POST /api/users/login - User Login');
+  console.log('  GET  /api/users - Get All Users');
+  console.log('  GET  /api/users/:userId - Get User by ID');
+  console.log('  GET  /api/users/:userId/whatsapp/qr - Get WhatsApp QR Code');
+  console.log('  GET  /api/users/:userId/whatsapp/qr-image - Get QR Code Image');
+  console.log('  GET  /api/users/:userId/whatsapp/status - WhatsApp Status');
+  console.log('  POST /api/users/:userId/whatsapp/disconnect - Disconnect WhatsApp');
+  console.log('='.repeat(80));
+  console.log('🔍 All requests and responses will be logged below:');
+  console.log('='.repeat(80));
 });
 
 module.exports = app;
